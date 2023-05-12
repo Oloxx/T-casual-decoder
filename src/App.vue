@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
-import data from './json/estacions.json';
+import stations from './json/stations.json';
+import lines from './json/lines.json';
 
 const serial = ref('');
 const linea = ref('??');
@@ -9,6 +10,7 @@ const zona = ref('??');
 const diaMes = ref('??/??');
 const horaMin = ref('??:??');
 const viatges = ref('??');
+const vInput = ref(null);
 const vLinea = ref(null);
 const vEstacio = ref(null);
 const vZona = ref(null);
@@ -24,96 +26,90 @@ function checkSerial() {
   diaMes.value = checkDiaMes(codi.substring(6, 8), codi.substring(8, 10));
   horaMin.value = checkHoraMin(codi.substring(10, 12), codi.substring(12, 14));
   viatges.value = checkViatges(codi.substring(14, 16));
+  
+  vInput.value = null;
+
+  if (codi.length > 16) {
+    vInput.value = true;
+  }
 }
 
 function checkLinea(lineaMetro) {
-  vLinea.value = false;
-  switch (lineaMetro) {
-    case '01':
-      return 'L1';
-    case '02':
-      return 'L2';
-    case '03':
-      return 'L3';
-    case '04':
-      return 'L4';
-    case '05':
-      return 'L5';
-    case '09':
-      return 'L9/L10';
-    default:
-      vLinea.value = true;
-      return '??';
+  if (lineaMetro) {
+    const findLine = lines.lines.find(l => l.codi === lineaMetro);
+    vLinea.value = !findLine;
+
+    return findLine ? findLine.nom : '??';
   }
+  return '??';
 }
 
+
 function checkEstacio(EstacioMetro) {
-  const findEstacio = data.estacions.find(e => e.codi === EstacioMetro);
-  if (!findEstacio) {
-    vEstacio.value = true;
-    return '???';
+  if (EstacioMetro) {
+    const findEstacio = stations.stations.find(e => e.codi === EstacioMetro);
+    vEstacio.value = !findEstacio;
+
+    return findEstacio ? findEstacio.nom : '???';
   }
-  vEstacio.value = false;
-  return findEstacio.nom;
+  return '???';
 }
 
 function checkZona(zona) {
-  if (zona != '01') {
-    vZona.value = true;
-    return '??';
+  if (zona) {
+    vZona.value = zona !== '01';
+
+    return vZona.value ? '??' : zona;
   }
-  vZona.value = false;
-  return zona;
+  return '??';
 }
 
-function checkDiaMes(dia, mes){
-  const date = new Date(null, mes - 1, dia);
-  let month = date.getMonth() + 1;
-  let day = date.getDate();
-  if (month == mes && day == dia) {
-    day = dia;
-    month = mes;
-    vDiaMes.value = false;
-    return `${day}/${month}`;
-  }
+function checkDiaMes(dia, mes) {
+  if (dia && mes) {
+    const date = new Date(null, mes - 1, dia);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
 
-  vDiaMes.value = true;
-  return `??/??`;
+    vDiaMes.value = !(month === mes && day === dia);
+
+    return vDiaMes.value ? '??/??' : `${day}/${month}`;
+  }
+  return '??/??';
 }
 
 function checkHoraMin(hora, minut) {
- let hour = hora;
- let minute = minut;
- vHoraMin.value = false;
- if (hora > 24) {
-  hour = '??';
-  vHoraMin.value = true;
- }
+  if (hora && minut) {
+    vHoraMin.value = false;
 
- if (minut > 59) {
-  minute = '??';
-  vHoraMin.value = true;
- }
- 
- return `${hour}:${minute}`;
+    if (hora > 24 || minut > 59) {
+      vHoraMin.value = true;
+    }
+    const hour = (hora > 24) ? '??' : hora;
+    const minute = (minut > 59) ? '??' : minut;
+
+    return `${hour}:${minute}`;
+  }
+  return '??:??';
 }
 
+
 function checkViatges(viatges) {
-  if (viatges > 9) {
-    vViatges.value = true;
-    return '??';
+  if (viatges) {
+    const viatgesI = parseInt(viatges);
+    vViatges.value = !(viatgesI <= 9 && viatgesI >= 0);
+
+    return vViatges.value ? '??' : viatges;
   }
-  vViatges.value = false;
-  return viatges;
+  return '??';
 }
 
 </script>
 
 <template>
   <main class="container container-page">
-    <form id="form" @submit.prevent="onSumit" style="margin-top: 100px;">
+    <form id="form" @submit.prevent="onSubmit" style="margin-top: 100px;">
       <label for="serial">Codi de la T-casual
-        <input required id="serial" type="text" placeholder="Indroueix el serial aqui" v-model="serial" @keyup="checkSerial()"/>
+        <input required id="serial" type="text" placeholder="Indroueix el serial aqui" v-model="serial" @keyup="checkSerial" :aria-invalid="vInput"/>
         <small>Per exemple: 013501 1212090009</small>
       </label>
     </form>
